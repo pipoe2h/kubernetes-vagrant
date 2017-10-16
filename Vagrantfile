@@ -4,26 +4,26 @@
 # Variables section
 ## Infrastructure
 $master_cpu = 2
-$master_memory = 2048
-$node_count = 2 # Minimum one node
-$node_cpu = 2
-$node_memory = 2048
-$linked_clone = true # Save storage space
-$network = "192.168.34" # Only first three octets
+$master_memory = 2048                       # 1GB memory makes the deployment fail    
+$node_count = 2                             # Minimum one node
+$node_cpu = 2           
+$node_memory = 2048                         # 1GB memory makes the deployment fail
+$linked_clone = true                        # Save storage space
+$network = "192.168.34"                     # Only first three octets
 $domain = "k8s.local"
 
 ## Kubernetes
-$k8s_version = "1.8.1"
-$k8s_token = "b33f0a.59a7100c41aa5999"
-$k8s_api_port = "6443"
-
-## Canal
-$canal_rbac_url = "https://raw.githubusercontent.com/projectcalico/canal/master/k8s-install/1.7/rbac.yaml"
-$canal_url = "https://raw.githubusercontent.com/projectcalico/canal/master/k8s-install/1.7/canal.yaml"
+$k8s_version = "1.8.1"                      # Find other versions on https://github.com/kubernetes/kubernetes/releases
+$k8s_token = "b33f0a.59a7100c41aa5999"      # This is a static token to make possible the automation. You can replace it with your own token 
+$k8s_api_port = "6443"                      # This is the default Kubernetes API port when kubeadm is used
 
 ######### DO NOT MODIFY AFTER THIS LINE #########
 ## Infrastructure
 $box_image = "ubuntu/xenial64"
+
+## Canal
+$canal_rbac_url = "https://raw.githubusercontent.com/projectcalico/canal/master/k8s-install/1.7/rbac.yaml"
+$canal_url = "https://raw.githubusercontent.com/projectcalico/canal/master/k8s-install/1.7/canal.yaml"
 
 ## Scripts
 $build_prereq = <<SCRIPT
