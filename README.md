@@ -48,5 +48,6 @@ Usage
 Depending on your hardware performance and Internet speed, a single Kubernetes node platform (master is always required) can take around 5-10 minutes to come up.
 
 You can check the Kubernetes cluster status on master server.
+
     $ vagrant ssh k8s-master
     [ubuntu@k8s-master:~ ] $ kubectl get nodes
