@@ -49,5 +49,11 @@ Depending on your hardware performance and Internet speed, a single Kubernetes n
 
 You can check the Kubernetes cluster status on master server.
 
-    $ vagrant ssh k8s-master
-    [ubuntu@k8s-master:~ ] $ kubectl get nodes
+    $ vagrant ssh master
+
+    ubuntu@master:~$ kubectl get nodes
+    NAME      STATUS    ROLES     AGE       VERSION
+    master    Ready     master    14h       v1.8.1
+    node1     Ready     <none>    14h       v1.8.1
+    node2     Ready     <none>    14h       v1.8.1
+
