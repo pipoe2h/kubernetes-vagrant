@@ -76,7 +76,7 @@ SCRIPT
 
 Vagrant.configure("2") do |config|
 
-    config.vm.define "k8s-master" do |master|
+    config.vm.define "master" do |master|
         master.vm.box = $box_image
         master.vm.hostname = "master.#{$domain}"
         master.vm.network :private_network, ip: "#{$network}.10"
@@ -94,7 +94,7 @@ Vagrant.configure("2") do |config|
     end 
 
     (1..$node_count).each do |i|
-        config.vm.define "k8s-node#{i}" do |node|
+        config.vm.define "node#{i}" do |node|
             node.vm.box = $box_image
             node.vm.hostname = "node#{i}.#{$domain}"
             node.vm.network :private_network, ip: "#{$network}.#{i + 10}"
