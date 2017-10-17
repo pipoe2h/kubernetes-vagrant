@@ -1,6 +1,8 @@
 # kubernetes-vagrant
 This Vagrantfile is for the deployment of a Kubernetes platform with a single master and multiple nodes. This platform uses Canal as the CNI plug-in.
 
+In addition, the master server runs the NFS service to provide persistent storage for your pods. The path is <IP_master_server>:/var/nfs/kubernetes
+
 Pre-requisites
 --------------
 * VirtualBox
@@ -14,7 +16,7 @@ Installation
 Configuration
 -------------
 The Kubernetes platform you get with this Vagrantfile is:
-  * Single Kubernetes master server (2x CPU/2GB memory)
+  * Single Kubernetes master server (2x CPU/2GB memory/10GB NFS disk)
   * Two Kubernetes node servers (2x CPU/2GB memory)
   * Vagrant box Ubuntu/Xenial64
   
@@ -38,6 +40,11 @@ $linked_clone = true                        # Save storage space
 ```ruby
 $network = "192.168.34"                     # Only first three octets
 $domain = "k8s.local"
+```
+
+### NFS service
+```ruby
+$nfs_gb = 10                                # The NFS disk for the master server is expressed in decimal gigabytes (Default: 10GB)
 ```
 
 Usage

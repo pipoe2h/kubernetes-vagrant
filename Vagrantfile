@@ -17,6 +17,9 @@ $k8s_version = "1.8.1"                      # Find other versions on https://git
 $k8s_token = "b33f0a.59a7100c41aa5999"      # This is a static token to make possible the automation. You can replace it with your own token 
 $k8s_api_port = "6443"                      # This is the default Kubernetes API port when kubeadm is used
 
+## NFS
+$nfs_gb = 10                                # The NFS disk for the master server is expressed in decimal gigabytes (Default: 10GB)
+
 ######### DO NOT MODIFY AFTER THIS LINE #########
 ## Infrastructure
 $box_image = "ubuntu/xenial64"
@@ -32,7 +35,7 @@ sysctl net.bridge.bridge-nf-call-iptables=1
 swapoff -a
 
 echo "...Installing dependencies..."
-apt-get update -y && apt-get upgrade -y && apt-get install -y ebtables ethtool curl apt-transport-https
+apt-get update -y && apt-get upgrade -y && apt-get install -y ebtables ethtool curl apt-transport-https nfs-common
 
 echo "...Installing Docker..."
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
@@ -74,7 +77,24 @@ cp /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
 chown -R ubuntu:ubuntu /home/ubuntu/.kube
 SCRIPT
 
+$build_nfs = <<SCRIPT
+parted -s -a optimal /dev/sdc mklabel GPT mkpart primary 0% 100% set 1 lvm on
+pvcreate /dev/sdc1
+vgcreate kubernetes /dev/sdc1
+lvcreate -l 100%FREE -n nfs kubernetes
+mkfs.ext4 /dev/mapper/kubernetes-nfs
+mkdir -p /var/nfs/kubernetes
+echo "/dev/mapper/kubernetes-nfs    /var/nfs/kubernetes ext4    defaults    0   2" >> /etc/fstab
+mount -a
+apt-get update && apt-get install -y nfs-kernel-server
+chown nobody:nogroup /var/nfs/kubernetes
+echo "/var/nfs/kubernetes   *(rw,sync,no_subtree_check)" >> /etc/exports
+systemctl enable nfs-kernel-server.service && systemctl restart nfs-kernel-server.service
+SCRIPT
+
 Vagrant.configure("2") do |config|
+
+    file_root = File.dirname(File.expand_path(__FILE__))
 
     config.vm.define "master" do |master|
         master.vm.box = $box_image
@@ -84,12 +104,19 @@ Vagrant.configure("2") do |config|
             vb.memory = $master_memory
             vb.cpus = $master_cpu
             vb.linked_clone = $linked_clone
+            vb.customize ["modifyvm", :id, "--macaddress1", "auto"]
+            file_to_disk = File.join(file_root, "nfs.vdi")
+            unless File.exist?(file_to_disk)
+                vb.customize ['createhd', '--filename', file_to_disk, '--format', 'VDI', '--size', $nfs_gb * 1024]
+            end
+            vb.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 2, '--type', 'hdd', '--medium', file_to_disk]
         end
         master.vm.provision "shell", inline: <<-SHELL
-        #{$build_prereq}
-        #{$kubeadm_init}
-        #{$kubectl_canal}
-        #{$kubectl_config}
+        ##{$build_prereq}
+        ##{$kubeadm_init}
+        ##{$kubectl_canal}
+        ##{$kubectl_config}
+        #{$build_nfs}
         SHELL
     end 
 
@@ -108,5 +135,5 @@ Vagrant.configure("2") do |config|
             #{$kubeadm_join}
             SHELL
         end         
-    end    
+    end
 end    

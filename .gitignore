@@ -1,2 +1,3 @@
-.vagrant.d
+.vagrant
 *.log
+*.vdi
