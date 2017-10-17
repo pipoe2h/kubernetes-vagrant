@@ -112,10 +112,10 @@ Vagrant.configure("2") do |config|
             vb.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 2, '--type', 'hdd', '--medium', file_to_disk]
         end
         master.vm.provision "shell", inline: <<-SHELL
-        ##{$build_prereq}
-        ##{$kubeadm_init}
-        ##{$kubectl_canal}
-        ##{$kubectl_config}
+        #{$build_prereq}
+        #{$kubeadm_init}
+        #{$kubectl_canal}
+        #{$kubectl_config}
         #{$build_nfs}
         SHELL
     end 
