@@ -10,7 +10,6 @@ $node_cpu = 2
 $node_memory = 2048                         # 1GB memory makes the deployment fail
 $linked_clone = true                        # Save storage space
 $network = "192.168.34"                     # Only first three octets
-$domain = "k8s.local"
 
 ## Kubernetes
 $k8s_version = "1.8.1"                      # Find other versions on https://github.com/kubernetes/kubernetes/releases
@@ -58,26 +57,37 @@ apt-get update && apt-get install -y kubelet kubeadm kubectl
 SCRIPT
 
 $kubeadm_init = <<SCRIPT
-kubeadm init --apiserver-advertise-address=#{$network}.10 --kubernetes-version=#{$k8s_version} --pod-network-cidr=10.244.0.0/16 \
+echo "...Initiating Kubernetes..."
+kubeadm init \
+--apiserver-advertise-address=#{$network}.10 \
+--kubernetes-version=#{$k8s_version} \
+--pod-network-cidr=10.244.0.0/16 \
 --token=#{$k8s_token}
 SCRIPT
 
 $kubectl_canal = <<SCRIPT
+echo "...Configuring CNI plug-in..."
 kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f #{$canal_rbac_url}
-kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f #{$canal_url}
+wget #{$canal_url} -P /tmp
+sed 's/canal_iface: ""/canal_iface: "enp0s8"/' -i /tmp/canal.yaml
+kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f /tmp/canal.yaml
 SCRIPT
 
 $kubeadm_join = <<SCRIPT
-kubeadm join --token #{$k8s_token} #{$network}.10:#{$k8s_api_port} --discovery-token-unsafe-skip-ca-verification
+echo "...Joining Kubernetes node..."
+kubeadm join --token #{$k8s_token} #{$network}.10:#{$k8s_api_port} \
+--discovery-token-unsafe-skip-ca-verification
 SCRIPT
 
 $kubectl_config = <<SCRIPT
+echo "...Configuring kubectl access..."
 mkdir /home/ubuntu/.kube
 cp /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
 chown -R ubuntu:ubuntu /home/ubuntu/.kube
 SCRIPT
 
 $build_nfs = <<SCRIPT
+echo "...Installing NFS server..."
 parted -s -a optimal /dev/sdc mklabel GPT mkpart primary 0% 100% set 1 lvm on
 pvcreate /dev/sdc1
 vgcreate kubernetes /dev/sdc1
@@ -98,7 +108,7 @@ Vagrant.configure("2") do |config|
 
     config.vm.define "master" do |master|
         master.vm.box = $box_image
-        master.vm.hostname = "master.#{$domain}"
+        master.vm.hostname = "master"
         master.vm.network :private_network, ip: "#{$network}.10"
         master.vm.provider "virtualbox" do |vb|
             vb.memory = $master_memory
@@ -111,7 +121,12 @@ Vagrant.configure("2") do |config|
             end
             vb.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 2, '--type', 'hdd', '--medium', file_to_disk]
         end
+        $hosts_master_config = <<-SCRIPT
+        echo "...Configuring /etc/hosts"
+        sed 's/127.0.0.1.*master*/#{$network}.10 master/' -i /etc/hosts
+        SCRIPT
         master.vm.provision "shell", inline: <<-SHELL
+        #{$hosts_master_config}
         #{$build_prereq}
         #{$kubeadm_init}
         #{$kubectl_canal}
@@ -123,14 +138,19 @@ Vagrant.configure("2") do |config|
     (1..$node_count).each do |i|
         config.vm.define "node#{i}" do |node|
             node.vm.box = $box_image
-            node.vm.hostname = "node#{i}.#{$domain}"
+            node.vm.hostname = "node#{i}"
             node.vm.network :private_network, ip: "#{$network}.#{i + 10}"
             node.vm.provider "virtualbox" do |vb|
                 vb.memory = $node_memory
                 vb.cpus = $node_cpu
                 vb.linked_clone = $linked_clone
             end
+            $hosts_node_config = <<-SCRIPT
+            echo "...Configuring /etc/hosts..."
+            sed 's/127.0.0.1.*node#{i}*/#{$network}.#{i + 10} node#{i}/' -i /etc/hosts
+            SCRIPT
             node.vm.provision "shell", inline: <<-SHELL
+            #{$hosts_node_config}
             #{$build_prereq}
             #{$kubeadm_join}
             SHELL
