@@ -1,7 +1,7 @@
 # kubernetes-vagrant
 This Vagrantfile is for the deployment of a Kubernetes platform with a single master and multiple nodes. This platform uses Canal as the CNI plug-in.
 
-In addition, the master server runs the NFS service to provide persistent storage for your pods. The path is <IP_master_server>:/var/nfs/kubernetes
+In addition, a NFS server provides persistent storage for your pods. The path is <IP_nfs_server>:/var/nfs/kubernetes
 
 Pre-requisites
 --------------
@@ -16,35 +16,37 @@ Installation
 Configuration
 -------------
 The Kubernetes platform you get with this Vagrantfile is:
-  * Single Kubernetes master server (2x CPU/2GB memory/10GB NFS disk)
-  * Two Kubernetes node servers (2x CPU/2GB memory)
+  * NFS server (1x CPU/512MB memory/10GB disk/IP <network>.9)
+  * Single Kubernetes master server (2x CPU/2GB memory/IP <network>.10)
+  * Two Kubernetes node servers (2x CPU/2GB memory/IP <network>.11-254)
   * Vagrant box Ubuntu/Xenial64
   
 Before you run `vagrant up` you should review the Vagrantfile settings to map your requirements.
 
-### Number of Kubernetes node servers
 ```ruby
-$node_count = 2                             # Minimum one node
-```
+## Infrastructure
+### General
+$linked_clone = true                        # Save storage space
+$network = "192.168.34"                     # Only first three octets
 
-### Infrastructure
-```ruby
+### NFS
+$nfs_cpu = 1
+$nfs_memory = 512
+$nfs_gb = 10                                # The NFS disk for the master server is expressed in decimal gigabytes (Default: 10GB)
+
+### Master
 $master_cpu = 2
 $master_memory = 2048                       # 1GB memory makes the deployment fail    
+
+### Node
+$node_count = 2                             # Minimum one node
 $node_cpu = 2           
 $node_memory = 2048                         # 1GB memory makes the deployment fail
-$linked_clone = true                        # Save storage space
-```
 
-### Network and domain
-```ruby
-$network = "192.168.34"                     # Only first three octets
-$domain = "k8s.local"
-```
-
-### NFS service
-```ruby
-$nfs_gb = 10                                # The NFS disk for the master server is expressed in decimal gigabytes (Default: 10GB)
+## Kubernetes
+$k8s_version = "1.8.1"                      # Find other versions on https://github.com/kubernetes/kubernetes/releases
+$k8s_token = "b33f0a.59a7100c41aa5999"      # This is a static token to make possible the automation. You can replace it with your own token 
+$k8s_api_port = "6443"                      # This is the default Kubernetes API port when kubeadm is used
 ```
 
 Usage

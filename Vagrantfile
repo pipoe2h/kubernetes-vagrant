@@ -3,21 +3,28 @@
 
 # Variables section
 ## Infrastructure
-$master_cpu = 2
-$master_memory = 2048                       # 1GB memory makes the deployment fail    
-$node_count = 2                             # Minimum one node
-$node_cpu = 2           
-$node_memory = 2048                         # 1GB memory makes the deployment fail
+### General
 $linked_clone = true                        # Save storage space
 $network = "192.168.34"                     # Only first three octets
 
+### NFS
+$nfs_cpu = 1
+$nfs_memory = 512
+$nfs_gb = 10                                # The NFS disk for the master server is expressed in decimal gigabytes (Default: 10GB)
+
+### Master
+$master_cpu = 2
+$master_memory = 2048                       # 1GB memory makes the deployment fail    
+
+### Node
+$node_count = 2                             # Minimum one node
+$node_cpu = 2           
+$node_memory = 2048                         # 1GB memory makes the deployment fail
+
 ## Kubernetes
-$k8s_version = "1.8.1"                      # Find other versions on https://github.com/kubernetes/kubernetes/releases
+$k8s_version = "1.8.2"                      # Find other versions on https://github.com/kubernetes/kubernetes/releases
 $k8s_token = "b33f0a.59a7100c41aa5999"      # This is a static token to make possible the automation. You can replace it with your own token 
 $k8s_api_port = "6443"                      # This is the default Kubernetes API port when kubeadm is used
-
-## NFS
-$nfs_gb = 10                                # The NFS disk for the master server is expressed in decimal gigabytes (Default: 10GB)
 
 ######### DO NOT MODIFY AFTER THIS LINE #########
 ## Infrastructure
@@ -106,6 +113,31 @@ Vagrant.configure("2") do |config|
 
     file_root = File.dirname(File.expand_path(__FILE__))
 
+    config.vm.define "nfs" do |nfs|
+        nfs.vm.box = $box_image
+        nfs.vm.hostname = "nfs"
+        nfs.vm.network :private_network, ip: "#{$network}.9"
+        nfs.vm.provider "virtualbox" do |vb|
+            vb.memory = $nfs_memory
+            vb.cpus = $nfs_cpu
+            vb.linked_clone = $linked_clone
+            vb.customize ["modifyvm", :id, "--macaddress1", "auto"]
+            file_to_disk = File.join(file_root, "nfs.vdi")
+            unless File.exist?(file_to_disk)
+                vb.customize ['createhd', '--filename', file_to_disk, '--format', 'VDI', '--size', $nfs_gb * 1024]
+            end
+            vb.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 2, '--type', 'hdd', '--medium', file_to_disk]
+        end
+        $hosts_nfs_config = <<-SCRIPT
+        echo "...Configuring /etc/hosts"
+        sed 's/127.0.0.1.*nfs*/#{$network}.9 nfs/' -i /etc/hosts
+        SCRIPT
+        nfs.vm.provision "shell", inline: <<-SHELL
+        #{$hosts_nfs_config}
+        #{$build_nfs}
+        SHELL
+    end 
+
     config.vm.define "master" do |master|
         master.vm.box = $box_image
         master.vm.hostname = "master"
@@ -115,11 +147,6 @@ Vagrant.configure("2") do |config|
             vb.cpus = $master_cpu
             vb.linked_clone = $linked_clone
             vb.customize ["modifyvm", :id, "--macaddress1", "auto"]
-            file_to_disk = File.join(file_root, "nfs.vdi")
-            unless File.exist?(file_to_disk)
-                vb.customize ['createhd', '--filename', file_to_disk, '--format', 'VDI', '--size', $nfs_gb * 1024]
-            end
-            vb.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 2, '--type', 'hdd', '--medium', file_to_disk]
         end
         $hosts_master_config = <<-SCRIPT
         echo "...Configuring /etc/hosts"
@@ -131,7 +158,6 @@ Vagrant.configure("2") do |config|
         #{$kubeadm_init}
         #{$kubectl_canal}
         #{$kubectl_config}
-        #{$build_nfs}
         SHELL
     end 
 
@@ -144,6 +170,7 @@ Vagrant.configure("2") do |config|
                 vb.memory = $node_memory
                 vb.cpus = $node_cpu
                 vb.linked_clone = $linked_clone
+                vb.customize ["modifyvm", :id, "--macaddress1", "auto"]
             end
             $hosts_node_config = <<-SCRIPT
             echo "...Configuring /etc/hosts..."
