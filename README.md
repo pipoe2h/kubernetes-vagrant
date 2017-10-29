@@ -16,9 +16,9 @@ Installation
 Configuration
 -------------
 The Kubernetes platform you get with this Vagrantfile is:
-  * NFS server (1x CPU/512MB memory/10GB disk/IP <network>.9)
-  * Single Kubernetes master server (2x CPU/2GB memory/IP <network>.10)
-  * Two Kubernetes node servers (2x CPU/2GB memory/IP <network>.11-254)
+  * NFS server (1x CPU/256MB memory/10GB disk/IP <network>.9)
+  * Single Kubernetes master server (1x CPU/1GB memory/IP <network>.10)
+  * Two Kubernetes node servers (1x CPU/1GB memory/IP <network>.11-254)
   * Vagrant box Ubuntu/Xenial64
   
 Before you run `vagrant up` you should review the Vagrantfile settings to map your requirements.
