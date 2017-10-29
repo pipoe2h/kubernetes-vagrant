@@ -9,17 +9,17 @@ $network = "192.168.34"                     # Only first three octets
 
 ### NFS
 $nfs_cpu = 1
-$nfs_memory = 512
+$nfs_memory = 256
 $nfs_gb = 10                                # The NFS disk for the master server is expressed in decimal gigabytes (Default: 10GB)
 
 ### Master
-$master_cpu = 2
-$master_memory = 2048                       # 1GB memory makes the deployment fail    
+$master_cpu = 1
+$master_memory = 1024                       # 1GB minimum required (2GB recommended)    
 
 ### Node
 $node_count = 2                             # Minimum one node
-$node_cpu = 2           
-$node_memory = 2048                         # 1GB memory makes the deployment fail
+$node_cpu = 1           
+$node_memory = 1024                         # 1GB minimum required (2GB recommended)
 
 ## Kubernetes
 $k8s_version = "1.8.2"                      # Find other versions on https://github.com/kubernetes/kubernetes/releases
@@ -69,7 +69,8 @@ kubeadm init \
 --apiserver-advertise-address=#{$network}.10 \
 --kubernetes-version=#{$k8s_version} \
 --pod-network-cidr=10.244.0.0/16 \
---token=#{$k8s_token}
+--token=#{$k8s_token} \
+--token-ttl=0
 SCRIPT
 
 $kubectl_canal = <<SCRIPT
@@ -122,6 +123,7 @@ Vagrant.configure("2") do |config|
             vb.cpus = $nfs_cpu
             vb.linked_clone = $linked_clone
             vb.customize ["modifyvm", :id, "--macaddress1", "auto"]
+            vb.customize ["modifyvm", :id, "--vram", "7"]
             file_to_disk = File.join(file_root, "nfs.vdi")
             unless File.exist?(file_to_disk)
                 vb.customize ['createhd', '--filename', file_to_disk, '--format', 'VDI', '--size', $nfs_gb * 1024]
@@ -147,6 +149,7 @@ Vagrant.configure("2") do |config|
             vb.cpus = $master_cpu
             vb.linked_clone = $linked_clone
             vb.customize ["modifyvm", :id, "--macaddress1", "auto"]
+            vb.customize ["modifyvm", :id, "--vram", "7"]
         end
         $hosts_master_config = <<-SCRIPT
         echo "...Configuring /etc/hosts"
@@ -171,6 +174,7 @@ Vagrant.configure("2") do |config|
                 vb.cpus = $node_cpu
                 vb.linked_clone = $linked_clone
                 vb.customize ["modifyvm", :id, "--macaddress1", "auto"]
+                vb.customize ["modifyvm", :id, "--vram", "7"]
             end
             $hosts_node_config = <<-SCRIPT
             echo "...Configuring /etc/hosts..."
