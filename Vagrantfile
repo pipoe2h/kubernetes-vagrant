@@ -92,6 +92,7 @@ echo "...Configuring kubectl access..."
 mkdir /home/ubuntu/.kube
 cp /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
 chown -R ubuntu:ubuntu /home/ubuntu/.kube
+echo "source <(kubectl completion bash)" >> /home/ubuntu/.bashrc
 SCRIPT
 
 $build_nfs = <<SCRIPT
