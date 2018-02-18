@@ -28,7 +28,7 @@ Before you run `vagrant up` you should review the Vagrantfile settings to map yo
 ### General
 $linked_clone = true                        # Save storage space
 $network = "192.168.34"                     # Only first three octets
-$vagrant_user = "vagrant"             # The SSH user included in the vagrant box
+$vagrant_user = "vagrant"                   # The SSH user included in the vagrant box
 
 ### NFS
 $nfs_cpu = 1
@@ -63,7 +63,7 @@ You can check the Kubernetes cluster status on master server.
 
     ubuntu@master:~$ kubectl get nodes
     NAME      STATUS    ROLES     AGE       VERSION
-    master    Ready     master    14h       v1.8.1
-    node1     Ready     <none>    14h       v1.8.1
-    node2     Ready     <none>    14h       v1.8.1
+    master    Ready     master    14h       v1.9.3
+    node1     Ready     <none>    14h       v1.9.3
+    node2     Ready     <none>    14h       v1.9.3
 
