@@ -6,6 +6,7 @@
 ### General
 $linked_clone = true                        # Save storage space
 $network = "192.168.34"                     # Only first three octets
+$vagrant_user = "vagrant"             # The SSH user included in the vagrant box
 
 ### NFS
 $nfs_cpu = 1
@@ -21,8 +22,8 @@ $node_count = 2                             # Minimum one node
 $node_cpu = 1           
 $node_memory = 1024                         # 1GB minimum required (2GB recommended)
 
-## Kubernetes
-$k8s_version = "1.8.2"                      # Find other versions on https://github.com/kubernetes/kubernetes/releases
+## Docker & Kubernetes
+$docker_version = "17.03"                   # Find other versions on https://kubernetes.io/docs/setup/independent/install-kubeadm/#installing-docker
 $k8s_token = "b33f0a.59a7100c41aa5999"      # This is a static token to make possible the automation. You can replace it with your own token 
 $k8s_api_port = "6443"                      # This is the default Kubernetes API port when kubeadm is used
 
@@ -36,12 +37,20 @@ $canal_url = "https://raw.githubusercontent.com/projectcalico/canal/master/k8s-i
 
 ## Scripts
 $build_prereq = <<SCRIPT
-echo "...Setting network and memory..."
+echo "...Setting network and swap memory..."
+modprobe br_netfilter
+echo br_netfilter >> /etc/modules
 sysctl net.bridge.bridge-nf-call-iptables=1
 swapoff -a
 
 echo "...Installing dependencies..."
-apt-get update -y && apt-get upgrade -y && apt-get install -y ebtables ethtool curl apt-transport-https nfs-common
+apt-get update \
+    && apt-get install -y \
+    ebtables \
+    ethtool \
+    curl \
+    apt-transport-https \
+    nfs-common
 
 echo "...Installing Docker..."
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
@@ -50,8 +59,12 @@ cat <<EOF >/etc/apt/sources.list.d/docker.list
 deb https://download.docker.com/linux/$(lsb_release -si | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable 
 EOF
 
-apt-get update && apt-get install -y docker-ce=$(apt-cache madison docker-ce | grep 17.03 | head -1 | awk '{print $3}')
-usermod -a -G docker ubuntu
+apt-get update \
+    && apt-get install -y \
+    docker-ce=$(apt-cache madison docker-ce | grep #{$docker_version} | head -1 | awk '{print $3}')
+
+apt-mark hold docker-ce
+usermod -a -G docker #{$vagrant_user}
 
 echo "...Installing kubeadm..."
 curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
@@ -60,39 +73,43 @@ cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
 deb http://apt.kubernetes.io/ kubernetes-xenial main
 EOF
 
-apt-get update && apt-get install -y kubelet kubeadm kubectl
+apt-get update \
+    && apt-get install -y \
+    kubelet \
+    kubeadm \
+    kubectl
 SCRIPT
 
 $kubeadm_init = <<SCRIPT
 echo "...Initiating Kubernetes..."
 kubeadm init \
---apiserver-advertise-address=#{$network}.10 \
---kubernetes-version=#{$k8s_version} \
---pod-network-cidr=10.244.0.0/16 \
---token=#{$k8s_token} \
---token-ttl=0
+    --apiserver-advertise-address=#{$network}.10 \
+    --pod-network-cidr=10.244.0.0/16 \
+    --token=#{$k8s_token} \
+    --token-ttl=0
 SCRIPT
 
 $kubectl_canal = <<SCRIPT
 echo "...Configuring CNI plug-in..."
 kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f #{$canal_rbac_url}
-wget #{$canal_url} -P /tmp
+wget -q #{$canal_url} -P /tmp
 sed 's/canal_iface: ""/canal_iface: "enp0s8"/' -i /tmp/canal.yaml
 kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f /tmp/canal.yaml
 SCRIPT
 
 $kubeadm_join = <<SCRIPT
 echo "...Joining Kubernetes node..."
-kubeadm join --token #{$k8s_token} #{$network}.10:#{$k8s_api_port} \
---discovery-token-unsafe-skip-ca-verification
+kubeadm join \
+    --token #{$k8s_token} #{$network}.10:#{$k8s_api_port} \
+    --discovery-token-unsafe-skip-ca-verification
 SCRIPT
 
 $kubectl_config = <<SCRIPT
 echo "...Configuring kubectl access..."
-mkdir /home/ubuntu/.kube
-cp /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
-chown -R ubuntu:ubuntu /home/ubuntu/.kube
-echo "source <(kubectl completion bash)" >> /home/ubuntu/.bashrc
+mkdir /home/#{$vagrant_user}/.kube
+cp /etc/kubernetes/admin.conf /home/#{$vagrant_user}/.kube/config
+chown -R #{$vagrant_user}:#{$vagrant_user} /home/#{$vagrant_user}/.kube
+echo "source <(kubectl completion bash)" >> /home/#{$vagrant_user}/.bashrc
 SCRIPT
 
 $build_nfs = <<SCRIPT
@@ -105,7 +122,9 @@ mkfs.ext4 /dev/mapper/kubernetes-nfs
 mkdir -p /var/nfs/kubernetes
 echo "/dev/mapper/kubernetes-nfs    /var/nfs/kubernetes ext4    defaults    0   2" >> /etc/fstab
 mount -a
-apt-get update && apt-get install -y nfs-kernel-server
+apt-get update \
+    && apt-get install -y \
+    nfs-kernel-server
 chown nobody:nogroup /var/nfs/kubernetes
 echo "/var/nfs/kubernetes   *(rw,sync,no_subtree_check)" >> /etc/exports
 systemctl enable nfs-kernel-server.service && systemctl restart nfs-kernel-server.service
