@@ -61,7 +61,7 @@ You can check the Kubernetes cluster status on master server.
 
     $ vagrant ssh master
 
-    ubuntu@master:~$ kubectl get nodes
+    vagrant@master:~$ kubectl get nodes
     NAME      STATUS    ROLES     AGE       VERSION
     master    Ready     master    14h       v1.9.3
     node1     Ready     <none>    14h       v1.9.3
