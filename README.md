@@ -28,6 +28,7 @@ Before you run `vagrant up` you should review the Vagrantfile settings to map yo
 ### General
 $linked_clone = true                        # Save storage space
 $network = "192.168.34"                     # Only first three octets
+$vagrant_user = "vagrant"             # The SSH user included in the vagrant box
 
 ### NFS
 $nfs_cpu = 1
@@ -43,8 +44,8 @@ $node_count = 2                             # Minimum one node
 $node_cpu = 1           
 $node_memory = 1024                         # 1GB minimum required (2GB recommended)
 
-## Kubernetes
-$k8s_version = "1.8.2"                      # Find other versions on https://github.com/kubernetes/kubernetes/releases
+## Docker & Kubernetes
+$docker_version = "17.03"                   # Find other versions on https://kubernetes.io/docs/setup/independent/install-kubeadm/#installing-docker
 $k8s_token = "b33f0a.59a7100c41aa5999"      # This is a static token to make possible the automation. You can replace it with your own token 
 $k8s_api_port = "6443"                      # This is the default Kubernetes API port when kubeadm is used
 ```
