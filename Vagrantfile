@@ -6,7 +6,7 @@
 ### General
 $linked_clone = true                        # Save storage space
 $network = "192.168.34"                     # Only first three octets
-$vagrant_user = "vagrant"             # The SSH user included in the vagrant box
+$vagrant_user = "vagrant"                   # The SSH user included in the vagrant box
 
 ### NFS
 $nfs_cpu = 1
